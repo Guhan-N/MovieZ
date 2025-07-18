@@ -6,9 +6,8 @@ on:
       - main
 
 jobs:
- if: github.ref == 'refs/heads/main'
-
   build-deploy:
+    if: github.ref == 'refs/heads/main'  # Prevent running on gh-pages
     runs-on: ubuntu-latest
 
     steps:
@@ -36,4 +35,3 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          allow_empty_commit: true
