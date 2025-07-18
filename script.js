@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+const supabaseUrl = 'https://ofzplydqwuuxnxtsymbl.supabase.co'; // Replace with your Supabase Project URL
+const supabaseAnonKey = 'YOUR_ACTUAL_SUPABASE_ANON_KEY_HERE'; // Replace with your Supabase Anon Key
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 
 const API_KEY = '44586f891977911675d186d6e794d464';
 const API_BASE_URL = 'https://api.themoviedb.org/3';
