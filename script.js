@@ -11,7 +11,7 @@ const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
 
-// DOM Elements
+// DOM Elements d
 const moviesGrid = document.getElementById('movies-grid');
 const tvShowsGrid = document.getElementById('tvshows-grid');
 const trendingGrid = document.getElementById('trending-grid');
