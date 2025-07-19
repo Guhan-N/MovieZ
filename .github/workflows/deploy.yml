@@ -25,7 +25,7 @@ jobs:
       - name: Clean build directory
         run: rm -rf dist
 
-      - name: Build with Vite
+      - name: Build project
         run: npm run build # This will now use the base path defined in package.json
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
