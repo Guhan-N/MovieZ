@@ -1,10 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://ofzplydqwuuxnxtsymbl.supabase.co'; // Replace with your Supabase Project URL
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9menBseWRxd3V1eG54dHN5bWJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE2OTEzMDAsImV4cCI6MjA2NzI2NzMwMH0.s4EZ2KOD-_Y_sszbQXdk2Kx1nPT_S5TE364vlQkIImE'; // Replace with your Supabase Anon Key
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 
 const API_KEY = '44586f891977911675d186d6e794d464';
 const API_BASE_URL = 'https://api.themoviedb.org/3';
