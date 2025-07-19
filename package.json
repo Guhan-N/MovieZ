@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --base=/moviez/", 
+    "build": "vite build --base=/moviez/", // Change this line
     "preview": "vite preview"
   },
   "dependencies": {
     "vite": "^5.0.0",
     "@splidejs/splide": "^4.1.4",
     "@supabase/supabase-js": "^2.39.3"
-  }
+  },
+  "homepage": "https://Guhan-N.github.io/moviez/"
 }
