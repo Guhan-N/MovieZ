@@ -6,7 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY; // Change this line
-const API_BASE_URL = import.meta.env.VITE_TMDB_BASE_URL; // Change this line
+const API_BASE_URL = import.meta.env.VITE_TMDB_BASE_URL || 'https://ofzplydqwuuxnxtsymbl.supabase.co'
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
