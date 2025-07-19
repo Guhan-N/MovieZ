@@ -2,5 +2,6 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  // Remove the 'base' property from 
+  base: '/MovieZ/', // must match your repo name
+  // ...other config
 });
