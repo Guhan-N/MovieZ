@@ -11,7 +11,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // TMDB configuration with fallbacks
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY || 'https://ofzplydqwuuxnxtsymbl.supabase.co';
+const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const API_BASE_URL = import.meta.env.VITE_TMDB_BASE_URL || 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
@@ -281,18 +281,8 @@ themeToggle.addEventListener('click', () => {
 async function fetchContent(endpoint) {
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${API_KEY}`);
-        
-        if (!response.ok) {
-            console.error(`HTTP error! status: ${response.status}`);
-            return null;
-        }
-        
-        try {
-            return await response.json();
-        } catch (jsonError) {
-            console.error('JSON parsing error:', jsonError);
-            return null;
-        }
+        const data = await response.json();
+        return data;
     } catch (error) {
         console.error('Error fetching content:', error);
         return null;
@@ -328,16 +318,6 @@ function filterAnimeContent(results) {
 async function loadGenres() {
     const movieGenres = await fetchContent('/genre/movie/list');
     const tvGenres = await fetchContent('/genre/tv/list');
-    
-    if (!movieGenres || !movieGenres.genres) {
-        console.error('Failed to load movie genres');
-        return;
-    }
-    
-    if (!tvGenres || !tvGenres.genres) {
-        console.error('Failed to load TV genres');
-        return;
-    }
     
     const allGenres = [...new Set([...movieGenres.genres, ...tvGenres.genres].map(g => JSON.stringify(g)))];
     const uniqueGenres = allGenres.map(g => JSON.parse(g));
@@ -1253,17 +1233,6 @@ async function displayContent(page) {
             const trending = await fetchContent('/trending/all/week');
             const movies = await fetchContent('/movie/popular');
             const tvShows = await fetchContent('/tv/popular');
-            
-            // Initialize with empty arrays if fetch failed
-            if (!trending || !trending.results) {
-                trending = { results: [] };
-            }
-            if (!movies || !movies.results) {
-                movies = { results: [] };
-            }
-            if (!tvShows || !tvShows.results) {
-                tvShows = { results: [] };
-            }
             
             // Setup hero slider for home
             trending.results.slice(0, 5).forEach(item => {
