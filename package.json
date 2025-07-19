@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --base=/moviez/",
+    "build": "vite build --base=/moviez/", 
     "preview": "vite preview"
   },
   "dependencies": {
