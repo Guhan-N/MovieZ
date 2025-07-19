@@ -725,15 +725,14 @@ window.toggleWatchlist = async function(contentId, contentType, title, posterPat
             .select('id')
             .eq('user_id', currentUser.id)
             .eq('content_id', contentId)
-            .eq('content_type', contentType)
-            .single();
+            .eq('content_type', contentType);
 
-        if (existing) {
+        if (existing && existing.length > 0) {
             // Remove from watchlist
             await supabase
                 .from('user_watchlist')
                 .delete()
-                .eq('id', existing.id);
+                .eq('id', existing[0].id);
             console.log('Removed from watchlist');
         } else {
             // Add to watchlist
