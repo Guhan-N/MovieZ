@@ -5,8 +5,8 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY; // Change this line
-const API_BASE_URL = import.meta.env.VITE_TMDB_BASE_URL; // Change this line
+const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+const API_BASE_URL = import.meta.env.VITE_TMDB_BASE_URL || 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
@@ -270,12 +270,18 @@ themeToggle.addEventListener('click', () => {
 // Fetch content from API
 async function fetchContent(endpoint) {
     try {
+        if (!API_KEY) {
+            throw new Error('TMDB API key is not configured. Check your environment variables.');
+        }
         const response = await fetch(`${API_BASE_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${API_KEY}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         return data;
     } catch (error) {
         console.error('Error fetching content:', error);
-        return null;
+        throw error;
     }
 }
 
@@ -306,26 +312,36 @@ function filterAnimeContent(results) {
 
 // Load genres for both movies and TV shows
 async function loadGenres() {
-    const movieGenres = await fetchContent('/genre/movie/list');
-    const tvGenres = await fetchContent('/genre/tv/list');
-    
-    const allGenres = [...new Set([...movieGenres.genres, ...tvGenres.genres].map(g => JSON.stringify(g)))];
-    const uniqueGenres = allGenres.map(g => JSON.parse(g));
-    
-    // Populate both desktop and mobile genre selects
-    [genreSelect, mobileGenreSelect].forEach(select => {
-        // Clear existing options except the first one
-        while (select.children.length > 1) {
-            select.removeChild(select.lastChild);
+    try {
+        const movieGenres = await fetchContent('/genre/movie/list');
+        const tvGenres = await fetchContent('/genre/tv/list');
+        
+        if (!movieGenres || !movieGenres.genres) {
+            console.error('Failed to load movie genres');
+            return;
         }
         
-        uniqueGenres.forEach(genre => {
-            const option = document.createElement('option');
-            option.value = genre.id;
-            option.textContent = genre.name;
-            select.appendChild(option);
+        const allGenres = [...new Set([...movieGenres.genres, ...tvGenres.genres].map(g => JSON.stringify(g)))];
+        const uniqueGenres = allGenres.map(g => JSON.parse(g));
+        
+        // Populate both desktop and mobile genre selects
+        [genreSelect, mobileGenreSelect].forEach(select => {
+            // Clear existing options except the first one
+            while (select.children.length > 1) {
+                select.removeChild(select.lastChild);
+            }
+            
+            uniqueGenres.forEach(genre => {
+                const option = document.createElement('option');
+                option.value = genre.id;
+                option.textContent = genre.name;
+                select.appendChild(option);
+            });
         });
-    });
+    } catch (error) {
+        console.error('Error loading genres:', error);
+        // Continue without genres if they fail to load
+    }
 }
 
 // Create content card
@@ -1218,231 +1234,257 @@ async function displayContent(page) {
     const tvShowsGrid = document.getElementById('tvshows-grid');
     const animeGrid = document.getElementById('anime-grid');
 
-    switch(page) {
-        case 'home':
-            const trending = await fetchContent('/trending/all/week');
-            const movies = await fetchContent('/movie/popular');
-            const tvShows = await fetchContent('/tv/popular');
-            
-            // Setup hero slider for home
-            trending.results.slice(0, 5).forEach(item => {
-                const slide = document.createElement('div');
-                slide.className = 'splide__slide';
-                slide.innerHTML = `
-                    <div class="hero-slide" style="background-image: url(${BACKDROP_BASE_URL}${item.backdrop_path})">
-                        <div class="hero-content">
-                            <h2>${item.title || item.name}</h2>
-                            <p>${item.overview}</p>
-                            <div class="hero-buttons">
-                                <button class="hero-btn primary" data-id="${item.id}" data-type="${item.title ? 'movie' : 'tv'}">
-                                    Watch Now
-                                </button>
-                                <button class="hero-btn secondary" data-id="${item.id}" data-type="${item.title ? 'movie' : 'tv'}">
-                                    More Info
-                                </button>
+    try {
+        switch(page) {
+            case 'home':
+                const trending = await fetchContent('/trending/all/week');
+                const movies = await fetchContent('/movie/popular');
+                const tvShows = await fetchContent('/tv/popular');
+                
+                if (!trending || !trending.results) {
+                    console.error('No trending results found');
+                    return;
+                }
+                
+                // Setup hero slider for home
+                trending.results.slice(0, 5).forEach(item => {
+                    const slide = document.createElement('div');
+                    slide.className = 'splide__slide';
+                    slide.innerHTML = `
+                        <div class="hero-slide" style="background-image: url(${BACKDROP_BASE_URL}${item.backdrop_path})">
+                            <div class="hero-content">
+                                <h2>${item.title || item.name}</h2>
+                                <p>${item.overview}</p>
+                                <div class="hero-buttons">
+                                    <button class="hero-btn primary" data-id="${item.id}" data-type="${item.title ? 'movie' : 'tv'}">
+                                        Watch Now
+                                    </button>
+                                    <button class="hero-btn secondary" data-id="${item.id}" data-type="${item.title ? 'movie' : 'tv'}">
+                                        More Info
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                heroSlider.appendChild(slide);
-            });
+                    `;
+                    heroSlider.appendChild(slide);
+                });
 
-            // Initialize Splide slider
-            new Splide('.splide', {
-                type: 'fade',
-                rewind: true,
-                autoplay: true,
-                interval: 5000,
-            }).mount();
+                // Initialize Splide slider
+                new Splide('.splide', {
+                    type: 'fade',
+                    rewind: true,
+                    autoplay: true,
+                    interval: 5000,
+                }).mount();
 
-            // Load personalized recommendations
-            loadPersonalizedRecommendations();
+                // Load personalized recommendations
+                loadPersonalizedRecommendations();
 
-            // Display content in grids
-            trending.results.forEach(item => {
-                const type = item.media_type || (item.title ? 'movie' : 'tv');
-                trendingGrid.appendChild(createContentCard(item, type));
-            });
+                // Display content in grids
+                trending.results.forEach(item => {
+                    const type = item.media_type || (item.title ? 'movie' : 'tv');
+                    trendingGrid.appendChild(createContentCard(item, type));
+                });
 
-            movies.results.forEach(movie => {
-                moviesGrid.appendChild(createContentCard(movie, 'movie'));
-            });
+                movies.results.forEach(movie => {
+                    moviesGrid.appendChild(createContentCard(movie, 'movie'));
+                });
 
-            tvShows.results.forEach(show => {
-                tvShowsGrid.appendChild(createContentCard(show, 'tv'));
-            });
-            break;
+                tvShows.results.forEach(show => {
+                    tvShowsGrid.appendChild(createContentCard(show, 'tv'));
+                });
+                break;
 
-        case 'movies':
-            const trendingMovies = await fetchContent('/trending/movie/week');
-            const popularMovies = await fetchContent('/movie/popular');
-            
-            // Setup hero slider for Movies
-            popularMovies.results.slice(0, 5).forEach(movie => {
-                const slide = document.createElement('div');
-                slide.className = 'splide__slide';
-                slide.innerHTML = `
-                    <div class="hero-slide" style="background-image: url(${BACKDROP_BASE_URL}${movie.backdrop_path})">
-                        <div class="hero-content">
-                            <h2>${movie.title}</h2>
-                            <p>${movie.overview}</p>
-                            <div class="hero-buttons">
-                                <button class="hero-btn primary" data-id="${movie.id}" data-type="movie">
-                                    Watch Now
-                                </button>
-                                <button class="hero-btn secondary" data-id="${movie.id}" data-type="movie">
-                                    More Info
-                                </button>
+            case 'movies':
+                const trendingMovies = await fetchContent('/trending/movie/week');
+                const popularMovies = await fetchContent('/movie/popular');
+                
+                if (!popularMovies || !popularMovies.results) {
+                    console.error('No movie results found');
+                    return;
+                }
+                
+                // Setup hero slider for Movies
+                popularMovies.results.slice(0, 5).forEach(movie => {
+                    const slide = document.createElement('div');
+                    slide.className = 'splide__slide';
+                    slide.innerHTML = `
+                        <div class="hero-slide" style="background-image: url(${BACKDROP_BASE_URL}${movie.backdrop_path})">
+                            <div class="hero-content">
+                                <h2>${movie.title}</h2>
+                                <p>${movie.overview}</p>
+                                <div class="hero-buttons">
+                                    <button class="hero-btn primary" data-id="${movie.id}" data-type="movie">
+                                        Watch Now
+                                    </button>
+                                    <button class="hero-btn secondary" data-id="${movie.id}" data-type="movie">
+                                        More Info
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                heroSlider.appendChild(slide);
-            });
+                    `;
+                    heroSlider.appendChild(slide);
+                });
 
-            // Initialize Splide slider for Movies
-            new Splide('.splide', {
-                type: 'fade',
-                rewind: true,
-                autoplay: true,
-                interval: 5000
-            }).mount();
+                // Initialize Splide slider for Movies
+                new Splide('.splide', {
+                    type: 'fade',
+                    rewind: true,
+                    autoplay: true,
+                    interval: 5000
+                }).mount();
 
-            // Display trending movies
-            trendingMovies.results.forEach(movie => {
-                trendingGrid.appendChild(createContentCard(movie, 'movie'));
-            });
+                // Display trending movies
+                trendingMovies.results.forEach(movie => {
+                    trendingGrid.appendChild(createContentCard(movie, 'movie'));
+                });
 
-            // Display popular movies
-            popularMovies.results.forEach(movie => {
-                moviesGrid.appendChild(createContentCard(movie, 'movie'));
-            });
-            break;
+                // Display popular movies
+                popularMovies.results.forEach(movie => {
+                    moviesGrid.appendChild(createContentCard(movie, 'movie'));
+                });
+                break;
 
-        case 'tvshows':
-            const trendingTVShows = await fetchContent('/trending/tv/week');
-            const popularTVShows = await fetchContent('/tv/popular');
-            
-            // Setup hero slider for TV shows
-            popularTVShows.results.slice(0, 5).forEach(show => {
-                const slide = document.createElement('div');
-                slide.className = 'splide__slide';
-                slide.innerHTML = `
-                    <div class="hero-slide" style="background-image: url(${BACKDROP_BASE_URL}${show.backdrop_path})">
-                        <div class="hero-content">
-                            <h2>${show.name}</h2>
-                            <p>${show.overview}</p>
-                            <div class="hero-buttons">
-                                <button class="hero-btn primary" data-id="${show.id}" data-type="tv">
-                                    Watch Now
-                                </button>
-                                <button class="hero-btn secondary" data-id="${show.id}" data-type="tv">
-                                    More Info
-                                </button>
+            case 'tvshows':
+                const trendingTVShows = await fetchContent('/trending/tv/week');
+                const popularTVShows = await fetchContent('/tv/popular');
+                
+                if (!popularTVShows || !popularTVShows.results) {
+                    console.error('No TV show results found');
+                    return;
+                }
+                
+                // Setup hero slider for TV shows
+                popularTVShows.results.slice(0, 5).forEach(show => {
+                    const slide = document.createElement('div');
+                    slide.className = 'splide__slide';
+                    slide.innerHTML = `
+                        <div class="hero-slide" style="background-image: url(${BACKDROP_BASE_URL}${show.backdrop_path})">
+                            <div class="hero-content">
+                                <h2>${show.name}</h2>
+                                <p>${show.overview}</p>
+                                <div class="hero-buttons">
+                                    <button class="hero-btn primary" data-id="${show.id}" data-type="tv">
+                                        Watch Now
+                                    </button>
+                                    <button class="hero-btn secondary" data-id="${show.id}" data-type="tv">
+                                        More Info
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                heroSlider.appendChild(slide);
-            });
+                    `;
+                    heroSlider.appendChild(slide);
+                });
 
-            // Initialize Splide slider for TV shows
-            new Splide('.splide', {
-                type: 'fade',
-                rewind: true,
-                autoplay: true,
-                interval: 5000
-            }).mount();
+                // Initialize Splide slider for TV shows
+                new Splide('.splide', {
+                    type: 'fade',
+                    rewind: true,
+                    autoplay: true,
+                    interval: 5000
+                }).mount();
 
-            // Display trending TV shows
-            trendingTVShows.results.forEach(show => {
-                trendingGrid.appendChild(createContentCard(show, 'tv'));
-            });
+                // Display trending TV shows
+                trendingTVShows.results.forEach(show => {
+                    trendingGrid.appendChild(createContentCard(show, 'tv'));
+                });
 
-            // Display popular TV shows
-            popularTVShows.results.forEach(show => {
-                tvShowsGrid.appendChild(createContentCard(show, 'tv'));
-            });
-            break;
+                // Display popular TV shows
+                popularTVShows.results.forEach(show => {
+                    tvShowsGrid.appendChild(createContentCard(show, 'tv'));
+                });
+                break;
 
-        case 'anime':
-            // Fetch anime content using multiple strategies for better filtering
-            const [
-                animationGenreContent,
-                japaneseContent,
-                animeKeywordContent
-            ] = await Promise.all([
-                fetchContent('/discover/tv?with_genres=16&sort_by=popularity.desc&with_origin_country=JP'),
-                fetchContent('/discover/tv?with_origin_country=JP&sort_by=popularity.desc'),
-                fetchContent('/discover/tv?with_keywords=210024|287928&sort_by=popularity.desc') // anime keywords
-            ]);
-            
-            // Combine and filter results to get only anime
-            const allAnimeResults = [
-                ...(animationGenreContent?.results || []),
-                ...(japaneseContent?.results || []),
-                ...(animeKeywordContent?.results || [])
-            ];
-            
-            // Remove duplicates and filter for anime content
-            const uniqueAnime = allAnimeResults.filter((item, index, self) => 
-                index === self.findIndex(t => t.id === item.id)
-            );
-            
-            const filteredAnime = filterAnimeContent(uniqueAnime);
-            
-            // Get trending anime
-            const trendingAnimeRaw = await fetchContent('/trending/tv/week?with_origin_country=JP');
-            const trendingAnime = filterAnimeContent(trendingAnimeRaw?.results || []);
-            
-            // Setup hero slider for Anime
-            filteredAnime.slice(0, 5).forEach(anime => {
-                const slide = document.createElement('div');
-                slide.className = 'splide__slide';
-                slide.innerHTML = `
-                    <div class="hero-slide" style="background-image: url(${BACKDROP_BASE_URL}${anime.backdrop_path})">
-                        <div class="hero-content">
-                            <h2>${anime.name}</h2>
-                            <p>${anime.overview}</p>
-                            <div class="hero-buttons">
-                                <button class="hero-btn primary" data-id="${anime.id}" data-type="tv">
-                                    Watch Now
-                                </button>
-                                <button class="hero-btn secondary" data-id="${anime.id}" data-type="tv">
-                                    More Info
-                                </button>
+            case 'anime':
+                // Fetch anime content using multiple strategies for better filtering
+                const [
+                    animationGenreContent,
+                    japaneseContent,
+                    animeKeywordContent
+                ] = await Promise.all([
+                    fetchContent('/discover/tv?with_genres=16&sort_by=popularity.desc&with_origin_country=JP'),
+                    fetchContent('/discover/tv?with_origin_country=JP&sort_by=popularity.desc'),
+                    fetchContent('/discover/tv?with_keywords=210024|287928&sort_by=popularity.desc') // anime keywords
+                ]);
+                
+                // Combine and filter results to get only anime
+                const allAnimeResults = [
+                    ...(animationGenreContent?.results || []),
+                    ...(japaneseContent?.results || []),
+                    ...(animeKeywordContent?.results || [])
+                ];
+                
+                // Remove duplicates and filter for anime content
+                const uniqueAnime = allAnimeResults.filter((item, index, self) => 
+                    index === self.findIndex(t => t.id === item.id)
+                );
+                
+                const filteredAnime = filterAnimeContent(uniqueAnime);
+                
+                // Get trending anime
+                const trendingAnimeRaw = await fetchContent('/trending/tv/week?with_origin_country=JP');
+                const trendingAnime = filterAnimeContent(trendingAnimeRaw?.results || []);
+                
+                // Setup hero slider for Anime
+                filteredAnime.slice(0, 5).forEach(anime => {
+                    const slide = document.createElement('div');
+                    slide.className = 'splide__slide';
+                    slide.innerHTML = `
+                        <div class="hero-slide" style="background-image: url(${BACKDROP_BASE_URL}${anime.backdrop_path})">
+                            <div class="hero-content">
+                                <h2>${anime.name}</h2>
+                                <p>${anime.overview}</p>
+                                <div class="hero-buttons">
+                                    <button class="hero-btn primary" data-id="${anime.id}" data-type="tv">
+                                        Watch Now
+                                    </button>
+                                    <button class="hero-btn secondary" data-id="${anime.id}" data-type="tv">
+                                        More Info
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                heroSlider.appendChild(slide);
-            });
+                    `;
+                    heroSlider.appendChild(slide);
+                });
 
-            // Initialize Splide slider for Anime
-            new Splide('.splide', {
-                type: 'fade',
-                rewind: true,
-                autoplay: true,
-                interval: 5000
-            }).mount();
+                // Initialize Splide slider for Anime
+                new Splide('.splide', {
+                    type: 'fade',
+                    rewind: true,
+                    autoplay: true,
+                    interval: 5000
+                }).mount();
 
-            // Display trending anime
-            trendingAnime.slice(0, 20).forEach(anime => {
-                trendingGrid.appendChild(createContentCard(anime, 'tv'));
-            });
+                // Display trending anime
+                trendingAnime.slice(0, 20).forEach(anime => {
+                    trendingGrid.appendChild(createContentCard(anime, 'tv'));
+                });
 
-            // Display popular anime
-            filteredAnime.slice(0, 20).forEach(anime => {
-                animeGrid.appendChild(createContentCard(anime, 'tv'));
-            });
-            break;
+                // Display popular anime
+                filteredAnime.slice(0, 20).forEach(anime => {
+                    animeGrid.appendChild(createContentCard(anime, 'tv'));
+                });
+                break;
 
-        case 'favorites':
-            favorites.forEach(item => {
-                const grid = item.contentType === 'movie' ? moviesGrid : tvShowsGrid;
-                grid.appendChild(createContentCard(item, item.contentType));
-            });
-            break;
+            case 'favorites':
+                favorites.forEach(item => {
+                    const grid = item.contentType === 'movie' ? moviesGrid : tvShowsGrid;
+                    grid.appendChild(createContentCard(item, item.contentType));
+                });
+                break;
+        }
+    } catch (error) {
+        console.error('Error displaying content:', error);
+        // Show error message to user
+        const grids = [trendingGrid, moviesGrid, tvShowsGrid, animeGrid].filter(grid => grid);
+        grids.forEach(grid => {
+            if (grid) {
+                grid.innerHTML = '<div class="error-state"><h3>Failed to load content</h3><p>Please check your internet connection and try again.</p></div>';
+            }
+        });
     }
 
     // Add event listeners for hero buttons
